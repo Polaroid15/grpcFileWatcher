@@ -1,0 +1,33 @@
+syntax = "proto3";
+option csharp_namespace = "FileGrpcCommon";
+package GrpcFileWorker;
+import "google/protobuf/empty.proto";
+
+service GrpcFileWorker {
+  rpc UploadBatches(UploadBatchesRequest) returns (UploadFilesResponse);
+  rpc UploadFilesStreaming(stream UploadStreamingRequest) returns (UploadFilesResponse);
+  rpc GetUploadedTypes(google.protobuf.Empty) returns (GetUploadedTypesResponse);
+}
+
+message UploadStreamingRequest {
+  FileType format = 1;
+  bytes data = 2;
+}
+
+message UploadBatchesRequest {
+  FileType format = 1;
+  repeated string data = 2;
+}
+
+message UploadFilesResponse {
+ bool isUploaded = 1;
+}
+
+message GetUploadedTypesResponse {
+  repeated string types = 1;
+}
+
+enum FileType {
+  NONE = 0;
+  JSON = 1;
+}

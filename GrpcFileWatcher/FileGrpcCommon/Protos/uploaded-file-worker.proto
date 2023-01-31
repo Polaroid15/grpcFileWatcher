@@ -1,0 +1,21 @@
+syntax = "proto3";
+option csharp_namespace = "FileGrpcCommon.Protos";
+package GrpcUploadedFileWorker;
+import "google/protobuf/empty.proto";
+
+service GrpcUploadedFileWorker {
+  rpc GetUploadedTypes(google.protobuf.Empty) returns (GetUploadedTypesResponse);
+  rpc GetObjects(GetObjectsRequest) returns (stream GetObjectsResponse);
+}
+
+message GetUploadedTypesResponse {
+  repeated string types = 1;
+}
+
+message GetObjectsRequest {
+  string type = 1;
+}
+
+message GetObjectsResponse {
+  repeated string values = 1;
+}
