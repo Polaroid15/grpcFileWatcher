@@ -16,14 +16,14 @@ public class UploadedFileWorkerService : GrpcUploadedFileWorker.GrpcUploadedFile
         _fileHandlerFactory = fileHandlerFactory;
     }
     
-    public override async Task<GetUploadedTypesResponse> GetUploadedTypes(Empty request, ServerCallContext context) {
+    public override Task<GetUploadedTypesResponse> GetUploadedTypes(Empty request, ServerCallContext context) {
         if (context.CancellationToken.IsCancellationRequested) {
-            return new GetUploadedTypesResponse();
+            return Task.FromResult(new GetUploadedTypesResponse());
         }
 
         var fileHandler = _fileHandlerFactory.Create(FileType.Json);
         var result = fileHandler.GetTypes();
-        return new GetUploadedTypesResponse { MessageTypes = { result } };
+        return Task.FromResult(new GetUploadedTypesResponse { MessageTypes = { result } });
     }
 
     
