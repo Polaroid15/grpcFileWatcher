@@ -16,11 +16,17 @@ public class FileWorkerService : FileGrpcCommon.GrpcFileWorker.GrpcFileWorkerBas
 
     public override async Task<UploadFilesResponse> UploadBatches(UploadBatchesRequest request, ServerCallContext context) 
     {
-        using var fileHandler = _fileHandlerFactory.Create(request.Format);
-        bool isUpload = false;
-        foreach (var dataArray in request.Data) 
+        if (context.CancellationToken.IsCancellationRequested)
         {
-            isUpload = await fileHandler.UploadFileAsync(dataArray, context.CancellationToken);
+            return new UploadFilesResponse { IsUploaded = false };
+        }
+        
+        var fileHandler = _fileHandlerFactory.Create(request.Format);
+
+        bool isUpload = false;
+        foreach (var data in request.Data) 
+        {
+            isUpload = await fileHandler.UploadFileAsync(data, context.CancellationToken);
         }
 
         return new UploadFilesResponse() { IsUploaded = isUpload };
@@ -31,15 +37,17 @@ public class FileWorkerService : FileGrpcCommon.GrpcFileWorker.GrpcFileWorkerBas
         ServerCallContext context)
     {
         bool isUpload = false;
-        try {
+        try 
+        {
             while (await requestStream.MoveNext() && !context.CancellationToken.IsCancellationRequested)
             {
                 var item = requestStream.Current;
-                using var fileHandler = _fileHandlerFactory.Create(item.Format);
+                var fileHandler = _fileHandlerFactory.Create(item.Format);
                 isUpload = await fileHandler.UploadFileAsync(item.Data.ToByteArray(), context.CancellationToken);
             }
         }
-        catch (RpcException e) {
+        catch (RpcException e) 
+        {
             _logger.LogError("FileWorkerService error: {error message}", e.Message);;
         }
         

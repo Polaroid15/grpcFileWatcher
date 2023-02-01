@@ -5,17 +5,17 @@ import "google/protobuf/empty.proto";
 
 service GrpcUploadedFileWorker {
   rpc GetUploadedTypes(google.protobuf.Empty) returns (GetUploadedTypesResponse);
-  rpc GetObjects(GetObjectsRequest) returns (stream GetObjectsResponse);
+  rpc GetUploadedFiles(GetUploadedFilesRequest) returns (stream GetUploadedFilesResponse);
 }
 
 message GetUploadedTypesResponse {
-  repeated string types = 1;
+  repeated string message_types = 1;
 }
 
-message GetObjectsRequest {
+message GetUploadedFilesRequest {
   string type = 1;
 }
 
-message GetObjectsResponse {
-  repeated string values = 1;
+message GetUploadedFilesResponse {
+  repeated string data = 1;
 }

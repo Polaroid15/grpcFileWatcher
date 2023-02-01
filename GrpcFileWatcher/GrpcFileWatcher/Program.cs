@@ -2,22 +2,21 @@
 
 var watchPath = Path.Combine(Environment.CurrentDirectory, "files");
 var directoryInfo = new DirectoryInfo(watchPath);
-if (!directoryInfo.Exists) {
+if (!directoryInfo.Exists)
+{
     directoryInfo.Create();
 }
 
-var fileLoadManager = new GrpcFileLoadManager("http://localhost:5157");
+var fileLoadManager = new GrpcFileLoadManager(args[0]);
 
-while (true) {
+while (true)
+{
     string[] filesPaths = Directory.GetFiles(watchPath, "*.json", SearchOption.AllDirectories);
     
     var result = false;
-    foreach (var filepath in filesPaths) {
+    foreach (var filepath in filesPaths)
+    {
         result = await fileLoadManager.UploadFilesByBatchesAsync(filepath);    
-    }
-    
-    foreach (var filepath in filesPaths) {
-        result = await fileLoadManager.UploadFilesByStreamingAsync(filepath);    
     }
 
     if (result) {

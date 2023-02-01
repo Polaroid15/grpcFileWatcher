@@ -16,6 +16,7 @@ builder.Services.AddTransient<IFileHandler, JsonFileHandler>();
 
 var app = builder.Build();
 
+app.MapGrpcService<UploadedFileWorkerService>();
 app.MapGrpcService<FileWorkerService>();
 
 app.Run();

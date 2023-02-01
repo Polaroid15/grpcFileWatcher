@@ -16,9 +16,9 @@ public class GrpcFileLoadManager : IFileLoadManager
     /// Constructor of GrpcFileManager.
     /// </summary>
     /// <param name="hostAddress">Address of grpc Server.</param>
-    public GrpcFileLoadManager(string hostAddress) 
+    public GrpcFileLoadManager(string hostAddress)
     {
-        _hostAddress = hostAddress;
+        _hostAddress = hostAddress ?? throw new ArgumentNullException(nameof(hostAddress));
     }
 
     /// <summary>
@@ -26,53 +26,84 @@ public class GrpcFileLoadManager : IFileLoadManager
     /// </summary>
     /// <param name="batchSize">Size of batch for partial upload files. By default = 5.</param>
     /// <param name="hostAddress">Address of grpc Server.</param>
-    public GrpcFileLoadManager(int batchSize, string hostAddress) 
-        : this(hostAddress) 
+    public GrpcFileLoadManager(int batchSize, string hostAddress)
+        : this(hostAddress)
     {
-        _batchSize = batchSize;
-        _hostAddress = hostAddress;
+        _batchSize = batchSize > 0 ? batchSize : _batchSize;
+        _hostAddress = hostAddress ?? throw new ArgumentNullException(nameof(hostAddress));
     }
 
     /// <inheritdoc/>
-    public async Task<bool> UploadFilesByBatchesAsync(string filePath) {
-        using var channel = CreateChannel();
-        var client = new GrpcFileWorker.GrpcFileWorkerClient(channel);
-
-        string[] lines = await GetFileLinesAsync(filePath);
-        var chunks = lines.Chunk(_batchSize);
-        bool isUpload = false;
-        
-        foreach (string[] chunk in chunks) {
-            var uploadBatchesRequest = new UploadBatchesRequest {
-                Format = FileType.Json,
-                Data = { chunk }
-            };
-            var result = await client.UploadBatchesAsync(uploadBatchesRequest);
-            isUpload = result.IsUploaded;
+    public async Task<bool> UploadFilesByBatchesAsync(string filePath) 
+    {
+        if (string.IsNullOrEmpty(filePath))
+        {
+            throw new ArgumentNullException(nameof(filePath));
         }
+        
+        bool isUpload = false;
+        try 
+        {
+            using var channel = CreateChannel();
+            var client = new GrpcFileWorker.GrpcFileWorkerClient(channel);
+
+            string[] lines = await GetFileLinesAsync(filePath);
+            var chunks = lines.Chunk(_batchSize);
+
+            foreach (string[] chunk in chunks)
+            {
+                var uploadBatchesRequest = new UploadBatchesRequest 
+                {
+                    Format = FileType.Json,
+                    Data = { chunk }
+                };
+                var result = await client.UploadBatchesAsync(uploadBatchesRequest);
+                isUpload = result.IsUploaded;
+            }
+        }
+        catch (RpcException e) 
+        {
+            Console.WriteLine(e.Message);
+        }
+
         return isUpload;
     }
 
     /// <inheritdoc/>
     public async Task<bool> UploadFilesByStreamingAsync(string filePath) {
-        string[] lines = await GetFileLinesAsync(filePath);
-        using var channel = CreateChannel();
-        var client = new GrpcFileWorker.GrpcFileWorkerClient(channel);
-        using var streaming = client.UploadFilesStreaming();
+        if (string.IsNullOrEmpty(filePath))
+        {
+            throw new ArgumentNullException(nameof(filePath));
+        }
         
-        foreach (var line in lines) {
-            var data = Encoding.UTF8.GetBytes(line);
-            var uploadFilesRequest = new UploadStreamingRequest() {
-                Format = FileType.Json,
-                Data = ByteString.CopyFrom(data)
-            };
-            await streaming.RequestStream.WriteAsync(uploadFilesRequest);
+        string[] lines = await GetFileLinesAsync(filePath);
+        bool isUploaded = false;
+
+        try 
+        {
+            using var channel = CreateChannel();
+            var client = new GrpcFileWorker.GrpcFileWorkerClient(channel);
+            using var streaming = client.UploadFilesStreaming();
+            foreach (var line in lines) {
+                var data = Encoding.UTF8.GetBytes(line);
+                var uploadFilesRequest = new UploadStreamingRequest()
+                {
+                    Format = FileType.Json,
+                    Data = ByteString.CopyFrom(data)
+                };
+                await streaming.RequestStream.WriteAsync(uploadFilesRequest);
+            }
+
+            await streaming.RequestStream.CompleteAsync();
+            var result = await streaming.ResponseAsync;
+            isUploaded = result.IsUploaded;
+        }
+        catch (RpcException e)
+        {
+            Console.WriteLine(e.Message);
         }
 
-        await streaming.RequestStream.CompleteAsync();
-        var result = await streaming.ResponseAsync;
-        
-        return result.IsUploaded;
+        return isUploaded;
     }
 
     private GrpcChannel CreateChannel()
@@ -96,7 +127,6 @@ public class GrpcFileLoadManager : IFileLoadManager
         });
     }
 
-    private static async Task<string[]> GetFileLinesAsync(string filePath) {
-        return await File.ReadAllLinesAsync(filePath);
-    }
+    private static async Task<string[]> GetFileLinesAsync(string filePath) =>
+        await File.ReadAllLinesAsync(filePath);
 }
