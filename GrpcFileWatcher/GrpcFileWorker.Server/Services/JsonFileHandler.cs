@@ -18,6 +18,7 @@ public class JsonFileHandler : IFileHandler
     public JsonFileHandler(IConfiguration configuration, ILoggerFactory loggerFactory) {
         _logger = loggerFactory.CreateLogger<JsonFileHandler>();
         _basePath = Path.Combine(Environment.CurrentDirectory, configuration["DownloadFolderPath"] ?? DefaultDownloadFolderPath);
+        CreateIfNotExistDirectory(_basePath);
     }
     
     public async Task<bool> UploadFileAsync(byte[] data, CancellationToken cancellationToken) 
@@ -51,7 +52,6 @@ public class JsonFileHandler : IFileHandler
             var type = (string)obj[TypeSectionName]!;
             var date = DateTimeOffset.UtcNow;
             var path = Path.Combine(_basePath, type, date.ToString("yyyy-MM-dd"));
-            CreateIfNotExistDirectory(path);
 
             var fileName = date.ToUnixTimeMilliseconds() + DefaultFileName;
             var output = Path.Combine(path, fileName);
@@ -69,7 +69,6 @@ public class JsonFileHandler : IFileHandler
 
     public string[] GetTypes() 
     {
-        CreateIfNotExistDirectory(_basePath);
         var directoryInfo = new DirectoryInfo(_basePath);
         var result = directoryInfo.GetDirectories().Select(x => x.Name).ToArray();
         return result;
@@ -81,8 +80,6 @@ public class JsonFileHandler : IFileHandler
             yield break;
         }
 
-        CreateIfNotExistDirectory(_basePath);
-        
         var directoryInfo = new DirectoryInfo(_basePath);
         var typeDirectoryInfo = directoryInfo.GetDirectories().FirstOrDefault(x => x.Name.Equals(type, StringComparison.InvariantCultureIgnoreCase));
         
